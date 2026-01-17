@@ -5,11 +5,11 @@ import { useAuth } from '@/lib/auth';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  FileText, 
-  Users, 
-  Trophy, 
-  Plus, 
+import {
+  FileText,
+  Users,
+  Trophy,
+  Plus,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -46,6 +46,59 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (user) {
       fetchDashboardData();
+
+      const examsChannel = supabase
+        .channel('teacher-dashboard-exams')
+        .on(
+          'postgres_changes' as any,
+          {
+            event: '*',
+            schema: 'public',
+            table: 'exams',
+            filter: `teacher_id=eq.${user.id}`,
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      const submissionsChannel = supabase
+        .channel('teacher-dashboard-submissions')
+        .on(
+          'postgres_changes' as any,
+          {
+            event: '*',
+            schema: 'public',
+            table: 'exam_submissions'
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      const rolesChannel = supabase
+        .channel('teacher-dashboard-roles')
+        .on(
+          'postgres_changes' as any,
+          {
+            event: '*',
+            schema: 'public',
+            table: 'user_roles',
+            filter: 'role=eq.student',
+          },
+          () => {
+            fetchDashboardData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(examsChannel);
+        supabase.removeChannel(submissionsChannel);
+        supabase.removeChannel(rolesChannel);
+      };
     }
   }, [user]);
 

@@ -23,10 +23,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Plus, 
-  Search, 
-  FileText, 
+import {
+  Plus,
+  Search,
+  FileText,
   MoreVertical,
   Edit,
   Trash2,
@@ -59,6 +59,26 @@ export default function ExamsList() {
   useEffect(() => {
     if (user) {
       fetchExams();
+
+      const channel = supabase
+        .channel('teacher-exams-changes')
+        .on(
+          'postgres_changes' as any,
+          {
+            event: '*',
+            schema: 'public',
+            table: 'exams',
+            filter: `teacher_id=eq.${user.id}`,
+          },
+          () => {
+            fetchExams();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -239,7 +259,7 @@ export default function ExamsList() {
                         </DropdownMenu>
                       </div>
                     </div>
-                    
+
                     <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
                       {exam.title}
                     </h3>

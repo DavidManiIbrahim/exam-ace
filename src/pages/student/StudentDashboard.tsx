@@ -24,7 +24,28 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) fetchExams();
+    if (user) {
+      fetchExams();
+
+      const channel = supabase
+        .channel('student-dashboard-changes')
+        .on(
+          'postgres_changes' as any,
+          {
+            event: '*',
+            schema: 'public',
+            table: 'exams'
+          },
+          () => {
+            fetchExams();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const fetchExams = async () => {
@@ -90,24 +111,24 @@ export default function StudentDashboard() {
             <Button variant="ghost" asChild><Link to="/student/exams">View All<ArrowRight className="h-4 w-4 ml-2" /></Link></Button>
           </div>
           <CardContent className="p-6">
-            {loading ? <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />)}</div> :
+            {loading ? <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />)}</div> :
               exams.length === 0 ? <div className="text-center py-8"><FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground">No exams available yet</p></div> :
-              <div className="space-y-3">{exams.slice(0, 5).map(exam => {
-                const status = getStatus(exam);
-                return (
-                  <Link key={exam.id} to={status.label === 'Active' ? `/student/exams/${exam.id}/take` : `/student/exams`} 
-                    className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-lg bg-primary/10"><FileText className="h-5 w-5 text-primary" /></div>
-                      <div>
-                        <h4 className="font-medium">{exam.title}</h4>
-                        <p className="text-sm text-muted-foreground">{exam.subject} • {exam.duration_minutes} min</p>
+                <div className="space-y-3">{exams.slice(0, 5).map(exam => {
+                  const status = getStatus(exam);
+                  return (
+                    <Link key={exam.id} to={status.label === 'Active' ? `/student/exams/${exam.id}/take` : `/student/exams`}
+                      className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-primary/10"><FileText className="h-5 w-5 text-primary" /></div>
+                        <div>
+                          <h4 className="font-medium">{exam.title}</h4>
+                          <p className="text-sm text-muted-foreground">{exam.subject} • {exam.duration_minutes} min</p>
+                        </div>
                       </div>
-                    </div>
-                    <span className={`status-badge ${status.class}`}>{status.label}</span>
-                  </Link>
-                );
-              })}</div>
+                      <span className={`status-badge ${status.class}`}>{status.label}</span>
+                    </Link>
+                  );
+                })}</div>
             }
           </CardContent>
         </Card>

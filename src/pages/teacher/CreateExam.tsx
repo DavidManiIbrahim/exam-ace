@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -8,6 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { z } from 'zod';
@@ -15,6 +22,8 @@ import { z } from 'zod';
 const examSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title is too long'),
   subject: z.string().min(1, 'Subject is required').max(100, 'Subject is too long'),
+  exam_type: z.string().min(1, 'Exam type is required'),
+  class_id: z.string().optional().nullable(),
   description: z.string().max(1000, 'Description is too long').optional(),
   instructions: z.string().max(2000, 'Instructions are too long').optional(),
   duration_minutes: z.number().min(1, 'Duration must be at least 1 minute').max(480, 'Duration cannot exceed 8 hours'),
@@ -27,16 +36,31 @@ export default function CreateExam() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [classes, setClasses] = useState<{ id: string, name: string }[]>([]);
+  const [subjects, setSubjects] = useState<{ id: string, name: string }[]>([]);
 
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
+    exam_type: 'Exam',
+    class_id: '',
     description: '',
     instructions: '',
     duration_minutes: 60,
     start_time: '',
     end_time: '',
   });
+
+  useEffect(() => {
+    fetchMetadata();
+  }, []);
+
+  const fetchMetadata = async () => {
+    const { data: classesData } = await supabase.from('classes').select('*').order('name');
+    const { data: subjectsData } = await supabase.from('subjects').select('*').order('name');
+    if (classesData) setClasses(classesData);
+    if (subjectsData) setSubjects(subjectsData);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +88,8 @@ export default function CreateExam() {
           teacher_id: user!.id,
           title: validatedData.title,
           subject: validatedData.subject,
+          exam_type: validatedData.exam_type,
+          class_id: validatedData.class_id || null,
           description: validatedData.description || null,
           instructions: validatedData.instructions || null,
           duration_minutes: validatedData.duration_minutes,
@@ -137,14 +163,56 @@ export default function CreateExam() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="exam_type">Exam Type *</Label>
+                  <Select
+                    value={formData.exam_type}
+                    onValueChange={(v) => setFormData({ ...formData, exam_type: v })}
+                  >
+                    <SelectTrigger id="exam_type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Exam">Exam</SelectItem>
+                      <SelectItem value="C.A Test">C.A Test</SelectItem>
+                      <SelectItem value="Quiz">Quiz</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
                   <Label htmlFor="subject">Subject *</Label>
-                  <Input
-                    id="subject"
-                    placeholder="e.g., Mathematics"
+                  <Select
                     value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    required
-                  />
+                    onValueChange={(v) => setFormData({ ...formData, subject: v })}
+                  >
+                    <SelectTrigger id="subject">
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjects.map(s => (
+                        <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="class">Target Class</Label>
+                  <Select
+                    value={formData.class_id}
+                    onValueChange={(v) => setFormData({ ...formData, class_id: v })}
+                  >
+                    <SelectTrigger id="class">
+                      <SelectValue placeholder="Select class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Classes</SelectItem>
+                      {classes.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

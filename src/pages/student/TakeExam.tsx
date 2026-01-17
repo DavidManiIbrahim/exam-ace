@@ -35,7 +35,7 @@ export default function TakeExam() {
       const { data: examData } = await supabase.from('exams').select('*').eq('id', id).single();
       if (!examData) { navigate('/student'); return; }
       setExam(examData);
-      
+
       const { data: questionsData } = await supabase.from('questions').select('*').eq('exam_id', id).order('order_index');
       setQuestions(questionsData?.map(q => ({ ...q, options: q.options as string[] | null })) || []);
 
@@ -46,7 +46,7 @@ export default function TakeExam() {
         sub = newSub;
       }
       setSubmissionId(sub?.id || null);
-      
+
       const elapsed = Math.floor((Date.now() - new Date(sub?.started_at || Date.now()).getTime()) / 1000);
       setTimeLeft(Math.max(0, examData.duration_minutes * 60 - elapsed));
 
@@ -80,7 +80,7 @@ export default function TakeExam() {
     try {
       let totalScore = 0, maxScore = 0;
       const { data: questionsWithAnswers } = await supabase.from('questions').select('*').eq('exam_id', id);
-      
+
       for (const q of questionsWithAnswers || []) {
         maxScore += q.marks;
         const studentAns = answers[q.id] || '';
@@ -93,13 +93,18 @@ export default function TakeExam() {
         }, { onConflict: 'submission_id,question_id' });
       }
 
+      const isGraded = questionsWithAnswers?.every(q => q.question_type === 'mcq') || false;
       await supabase.from('exam_submissions').update({
         submitted_at: new Date().toISOString(), total_score: totalScore, max_score: maxScore,
-        is_graded: questionsWithAnswers?.every(q => q.question_type === 'mcq') || false
+        is_graded: isGraded
       }).eq('id', submissionId);
 
       toast({ title: 'Success', description: 'Exam submitted successfully!' });
-      navigate('/student/results');
+      if (isGraded) {
+        navigate(`/student/results/${submissionId}`);
+      } else {
+        navigate('/student/results');
+      }
     } catch (error) { console.error(error); toast({ title: 'Error', description: 'Failed to submit', variant: 'destructive' }); }
     finally { setSubmitting(false); }
   };

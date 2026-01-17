@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -12,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Trophy } from 'lucide-react';
+import { Search, Trophy, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Submission {
@@ -35,6 +37,25 @@ export default function AdminResults() {
 
   useEffect(() => {
     fetchSubmissions();
+
+    const channel = supabase
+      .channel('admin-results-changes')
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'exam_submissions'
+        },
+        () => {
+          fetchSubmissions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function fetchSubmissions() {
@@ -138,6 +159,7 @@ export default function AdminResults() {
                       <TableHead>Score</TableHead>
                       <TableHead>Grade</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -163,6 +185,13 @@ export default function AdminResults() {
                           <Badge variant={sub.is_graded ? 'default' : 'outline'}>
                             {sub.is_graded ? 'Graded' : sub.submitted_at ? 'Pending' : 'In Progress'}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" asChild disabled={!sub.submitted_at}>
+                            <Link to={`/admin/results/${sub.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

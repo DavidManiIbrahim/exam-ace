@@ -20,6 +20,8 @@ import StudentDashboard from "./pages/student/StudentDashboard";
 import StudentExams from "./pages/student/StudentExams";
 import TakeExam from "./pages/student/TakeExam";
 import StudentResults from "./pages/student/StudentResults";
+import ReportCard from "./pages/student/ReportCard";
+import SubmissionDetail from "./pages/shared/SubmissionDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,7 +54,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/auth" element={<Auth />} />
-      
+
       {/* Admin routes */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/admin/teachers" element={<ProtectedRoute allowedRoles={['admin']}><AdminTeachers /></ProtectedRoute>} />
@@ -61,7 +63,8 @@ function AppRoutes() {
       <Route path="/admin/exams/new" element={<ProtectedRoute allowedRoles={['admin']}><CreateExam /></ProtectedRoute>} />
       <Route path="/admin/exams/:id" element={<ProtectedRoute allowedRoles={['admin']}><ExamDetails /></ProtectedRoute>} />
       <Route path="/admin/results" element={<ProtectedRoute allowedRoles={['admin']}><AdminResults /></ProtectedRoute>} />
-      
+      <Route path="/admin/results/:id" element={<ProtectedRoute allowedRoles={['admin']}><SubmissionDetail /></ProtectedRoute>} />
+
       {/* Teacher routes */}
       <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
       <Route path="/teacher/exams" element={<ProtectedRoute allowedRoles={['teacher']}><ExamsList /></ProtectedRoute>} />
@@ -70,13 +73,16 @@ function AppRoutes() {
       <Route path="/teacher/exams/:id/edit" element={<ProtectedRoute allowedRoles={['teacher']}><CreateExam /></ProtectedRoute>} />
       <Route path="/teacher/students" element={<ProtectedRoute allowedRoles={['teacher']}><StudentsList /></ProtectedRoute>} />
       <Route path="/teacher/results" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherResults /></ProtectedRoute>} />
-      
+      <Route path="/teacher/results/:id" element={<ProtectedRoute allowedRoles={['teacher']}><SubmissionDetail /></ProtectedRoute>} />
+
       {/* Student routes */}
       <Route path="/student" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
       <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />
       <Route path="/student/exams/:id/take" element={<ProtectedRoute allowedRoles={['student']}><TakeExam /></ProtectedRoute>} />
       <Route path="/student/results" element={<ProtectedRoute allowedRoles={['student']}><StudentResults /></ProtectedRoute>} />
-      
+      <Route path="/student/results/:id" element={<ProtectedRoute allowedRoles={['student']}><SubmissionDetail /></ProtectedRoute>} />
+      <Route path="/student/report-card" element={<ProtectedRoute allowedRoles={['student']}><ReportCard /></ProtectedRoute>} />
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
