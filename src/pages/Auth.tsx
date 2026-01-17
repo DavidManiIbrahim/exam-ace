@@ -30,7 +30,9 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && role) {
-      if (role === 'teacher') {
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'teacher') {
         navigate('/teacher');
       } else {
         navigate('/student');

@@ -22,6 +22,7 @@ import {
   X,
   ClipboardList,
   Trophy,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     navigate('/auth');
   };
 
+  const adminNavItems = [
+    { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/teachers', label: 'Teachers', icon: GraduationCap },
+    { href: '/admin/students', label: 'Students', icon: Users },
+    { href: '/admin/exams', label: 'All Exams', icon: FileText },
+    { href: '/admin/results', label: 'All Results', icon: Trophy },
+  ];
+
   const teacherNavItems = [
     { href: '/teacher', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/teacher/exams', label: 'Exams', icon: FileText },
@@ -54,8 +63,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/student/results', label: 'My Results', icon: Trophy },
   ];
 
-  const navItems = role === 'teacher' ? teacherNavItems : studentNavItems;
+  const navItems = role === 'admin' ? adminNavItems : role === 'teacher' ? teacherNavItems : studentNavItems;
   const initials = user?.email?.substring(0, 2).toUpperCase() || 'U';
+
+  const getRoleBadge = () => {
+    if (role === 'admin') {
+      return (
+        <>
+          <Shield className="h-4 w-4" />
+          Administrator
+        </>
+      );
+    }
+    if (role === 'teacher') {
+      return (
+        <>
+          <GraduationCap className="h-4 w-4" />
+          Teacher
+        </>
+      );
+    }
+    return (
+      <>
+        <Users className="h-4 w-4" />
+        Student
+      </>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -93,18 +127,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Role badge */}
           <div className="px-6 py-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
-              {role === 'teacher' ? (
-                <>
-                  <GraduationCap className="h-4 w-4" />
-                  Teacher
-                </>
-              ) : (
-                <>
-                  <Users className="h-4 w-4" />
-                  Student
-                </>
-              )}
+            <div className={cn(
+              "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium",
+              role === 'admin' 
+                ? "bg-destructive/10 text-destructive" 
+                : "bg-primary/10 text-primary"
+            )}>
+              {getRoleBadge()}
             </div>
           </div>
 
