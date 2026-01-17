@@ -13,6 +13,17 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js', '@tanstack/react-query'],
+          ui: ['lucide-react', 'date-fns', 'clsx', 'tailwind-merge'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

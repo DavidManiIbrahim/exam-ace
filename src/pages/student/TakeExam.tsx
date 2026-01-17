@@ -66,38 +66,70 @@ export default function TakeExam() {
 
   const saveAnswer = useCallback(async (qId: string, answer: string) => {
     if (!submissionId) return;
-    await supabase.from('student_answers').upsert({ submission_id: submissionId, question_id: qId, answer }, { onConflict: 'submission_id,question_id' });
+    const { error } = await supabase.from('student_answers').upsert({ submission_id: submissionId, question_id: qId, answer }, { onConflict: 'submission_id,question_id' });
+    if (error) console.error('Auto-save error:', error);
   }, [submissionId]);
 
-  const handleAnswerChange = (qId: string, answer: string) => {
+  // Debounced save for text areas
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  const handleAnswerChange = (qId: string, answer: string, isMcq: boolean) => {
     setAnswers(prev => ({ ...prev, [qId]: answer }));
-    saveAnswer(qId, answer);
+
+    if (isMcq) {
+      saveAnswer(qId, answer);
+    } else {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      const timeout = setTimeout(() => saveAnswer(qId, answer), 1000);
+      setSaveTimeout(timeout);
+    }
   };
 
   const handleSubmit = async () => {
     if (!submissionId || submitting) return;
     setSubmitting(true);
     try {
+      // 1. Fetch questions to calculate score safely
+      const { data: questionsWithAnswers, error: qError } = await (supabase.from('questions') as any).select('*').eq('exam_id', id);
+      if (qError) throw qError;
+
       let totalScore = 0, maxScore = 0;
-      const { data: questionsWithAnswers } = await supabase.from('questions').select('*').eq('exam_id', id);
+      const finalAnswers = [];
 
       for (const q of questionsWithAnswers || []) {
         maxScore += q.marks;
         const studentAns = answers[q.id] || '';
-        const isCorrect = q.question_type === 'mcq' && studentAns.toLowerCase().trim() === q.correct_answer.toLowerCase().trim();
+        const isMcq = q.question_type === 'mcq';
+        const isCorrect = isMcq && studentAns.toLowerCase().trim() === (q.correct_answer || '').toLowerCase().trim();
+
         if (isCorrect) totalScore += q.marks;
-        await supabase.from('student_answers').upsert({
-          submission_id: submissionId, question_id: q.id, answer: studentAns,
-          is_correct: q.question_type === 'mcq' ? isCorrect : null,
-          marks_obtained: q.question_type === 'mcq' ? (isCorrect ? q.marks : 0) : null
-        }, { onConflict: 'submission_id,question_id' });
+
+        finalAnswers.push({
+          submission_id: submissionId,
+          question_id: q.id,
+          answer: studentAns,
+          is_correct: isMcq ? isCorrect : null,
+          marks_obtained: isMcq ? (isCorrect ? q.marks : 0) : null
+        });
       }
 
+      // 2. Clear auto-save timeout if any
+      if (saveTimeout) clearTimeout(saveTimeout);
+
+      // 3. Bulk upsert all answers at once
+      const { error: ansError } = await supabase.from('student_answers').upsert(finalAnswers, { onConflict: 'submission_id,question_id' });
+      if (ansError) throw ansError;
+
+      // 4. Update submission status
       const isGraded = questionsWithAnswers?.every(q => q.question_type === 'mcq') || false;
-      await supabase.from('exam_submissions').update({
-        submitted_at: new Date().toISOString(), total_score: totalScore, max_score: maxScore,
+      const { error: subError } = await supabase.from('exam_submissions').update({
+        submitted_at: new Date().toISOString(),
+        total_score: totalScore,
+        max_score: maxScore,
         is_graded: isGraded
       }).eq('id', submissionId);
+
+      if (subError) throw subError;
 
       toast({ title: 'Success', description: 'Exam submitted successfully!' });
       if (isGraded) {
@@ -105,7 +137,10 @@ export default function TakeExam() {
       } else {
         navigate('/student/results');
       }
-    } catch (error) { console.error(error); toast({ title: 'Error', description: 'Failed to submit', variant: 'destructive' }); }
+    } catch (error: any) {
+      console.error('Submission error:', error);
+      toast({ title: 'Error', description: error.message || 'Failed to submit exam', variant: 'destructive' });
+    }
     finally { setSubmitting(false); }
   };
 
@@ -142,15 +177,15 @@ export default function TakeExam() {
             <CardHeader><div className="flex justify-between"><span className="text-sm text-muted-foreground">{q.question_type.toUpperCase()}</span><span className="text-sm">{q.marks} mark{q.marks > 1 ? 's' : ''}</span></div><CardTitle className="text-lg mt-2">{q.question_text}</CardTitle></CardHeader>
             <CardContent>
               {q.question_type === 'mcq' && q.options ? (
-                <RadioGroup value={answers[q.id] || ''} onValueChange={(v) => handleAnswerChange(q.id, v)} className="space-y-3">
+                <RadioGroup value={answers[q.id] || ''} onValueChange={(v) => handleAnswerChange(q.id, v, true)} className="space-y-3">
                   {q.options.map((opt, i) => (
-                    <div key={i} className={`question-option ${answers[q.id] === opt ? 'question-option-selected' : ''}`} onClick={() => handleAnswerChange(q.id, opt)}>
+                    <div key={i} className={`question-option ${answers[q.id] === opt ? 'question-option-selected' : ''}`} onClick={() => handleAnswerChange(q.id, opt, true)}>
                       <RadioGroupItem value={opt} id={`opt-${i}`} /><Label htmlFor={`opt-${i}`} className="flex-1 cursor-pointer">{String.fromCharCode(65 + i)}. {opt}</Label>
                     </div>
                   ))}
                 </RadioGroup>
               ) : (
-                <Textarea placeholder="Type your answer..." value={answers[q.id] || ''} onChange={(e) => handleAnswerChange(q.id, e.target.value)} rows={4} />
+                <Textarea placeholder="Type your answer..." value={answers[q.id] || ''} onChange={(e) => handleAnswerChange(q.id, e.target.value, false)} rows={4} />
               )}
             </CardContent>
           </Card>

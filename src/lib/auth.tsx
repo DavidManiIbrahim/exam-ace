@@ -9,7 +9,7 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role: 'teacher' | 'student') => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, role: 'teacher' | 'student' | 'admin') => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -42,36 +42,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    let mounted = true;
 
-        if (session?.user) {
-          const userRole = await fetchUserRole(session.user.id);
-          setRole(userRole);
+    const initializeAuth = async (currSession: Session | null) => {
+      if (!mounted) return;
+
+      setSession(currSession);
+      const currUser = currSession?.user ?? null;
+      setUser(currUser);
+
+      if (currUser) {
+        // If role is already in metadata, use it (speed boost)
+        const metadataRole = currUser.app_metadata?.role as UserRole;
+        if (metadataRole) {
+          setRole(metadataRole);
+          setLoading(false);
         } else {
-          setRole(null);
+          // Fallback to table fetch
+          const userRole = await fetchUserRole(currUser.id);
+          if (mounted) {
+            setRole(userRole);
+            setLoading(false);
+          }
         }
+      } else {
+        setRole(null);
         setLoading(false);
+      }
+    };
+
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        initializeAuth(session);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        const userRole = await fetchUserRole(session.user.id);
-        setRole(userRole);
-      }
-      setLoading(false);
+    // Initial check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      initializeAuth(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, userRole: 'teacher' | 'student') => {
+  const signUp = async (email: string, password: string, fullName: string, userRole: 'teacher' | 'student' | 'admin') => {
     try {
       const redirectUrl = `${window.location.origin}/`;
 

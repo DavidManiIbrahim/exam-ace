@@ -34,9 +34,9 @@ interface Submission {
 interface Answer {
     id: string;
     question_id: string;
-    answer_text: string;
+    answer: string;
     is_correct: boolean | null;
-    marks_awarded: number | null;
+    marks_obtained: number | null;
     feedback: string | null;
     question: {
         question_text: string;
@@ -68,13 +68,20 @@ export default function SubmissionDetail() {
     const fetchData = async () => {
         try {
             // Fetch submission
-            const { data: subData, error: subError } = await supabase
-                .from('exam_submissions')
-                .select('*, exam:exams(title, subject)')
+            const { data: subData, error: subError } = await (supabase
+                .from('exam_submissions') as any)
+                .select('*, exam:exams(title, subject, results_published)')
                 .eq('id', id)
                 .single();
 
             if (subError) throw subError;
+
+            // Simple security check for students
+            if (role === 'student' && !subData.exam.results_published && !subData.is_graded) {
+                toast({ title: 'Access Denied', description: 'Results are not yet published for this exam.', variant: 'warning' });
+                navigate('/student/results');
+                return;
+            }
 
             // Fetch student profile
             const { data: profile } = await supabase
@@ -86,14 +93,19 @@ export default function SubmissionDetail() {
             setSubmission({ ...subData, student_profile: profile });
 
             // Fetch answers with questions
-            const { data: ansData, error: ansError } = await supabase
-                .from('student_answers')
+            const { data: ansData, error: ansError } = await (supabase
+                .from('student_answers') as any)
                 .select('*, question:questions(*)')
-                .eq('submission_id', id)
-                .order('created_at', { ascending: true });
+                .eq('submission_id', id);
 
             if (ansError) throw ansError;
-            setAnswers(ansData as any);
+
+            // Sort by order_index
+            const sorted = (ansData || []).sort((a: any, b: any) =>
+                (a.question?.order_index || 0) - (b.question?.order_index || 0)
+            );
+
+            setAnswers(sorted as any);
 
         } catch (error) {
             console.error('Error:', error);
@@ -116,7 +128,7 @@ export default function SubmissionDetail() {
                     .from('student_answers')
                     .update({
                         is_correct: answer.is_correct,
-                        marks_awarded: answer.marks_awarded,
+                        marks_obtained: answer.marks_obtained,
                         feedback: answer.feedback,
                     })
                     .eq('id', answer.id);
@@ -125,7 +137,7 @@ export default function SubmissionDetail() {
             }
 
             // Update submission total score
-            const totalScore = answers.reduce((sum, a) => sum + (a.marks_awarded || 0), 0);
+            const totalScore = answers.reduce((sum, a) => sum + (a.marks_obtained || 0), 0);
             const { error: subError } = await supabase
                 .from('exam_submissions')
                 .update({
@@ -166,91 +178,125 @@ export default function SubmissionDetail() {
                     <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2">
                         <ArrowLeft className="h-4 w-4" /> Back to Results
                     </Button>
-                    {isTeacher && (
-                        <Button onClick={saveGrading} disabled={saving} className="gap-2">
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Save Grading
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => window.print()} className="gap-2 print:hidden">
+                            Print Review
                         </Button>
-                    )}
+                        {isTeacher && (
+                            <Button onClick={saveGrading} disabled={saving} className="gap-2">
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                Save Grading
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-3">
                     <Card className="md:col-span-2">
                         <CardHeader>
-                            <CardTitle>Submission Details</CardTitle>
+                            <CardTitle>Exam Review</CardTitle>
                             <CardDescription>
-                                {submission.exam?.title} • {submission.exam?.subject}
+                                Questions and Responses for {submission.exam?.title}
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            {answers.map((answer, index) => (
-                                <div key={answer.id} className="p-4 rounded-xl border bg-muted/30 space-y-4">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="flex-1">
-                                            <p className="text-sm font-semibold text-primary mb-1">Question {index + 1}</p>
-                                            <p className="font-medium">{answer.question?.question_text}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-medium">Max Marks: {answer.question?.marks}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-3 rounded-lg bg-card border">
-                                        <p className="text-xs text-muted-foreground mb-1">Student's Answer:</p>
-                                        <p className="whitespace-pre-wrap">{answer.answer_text}</p>
-                                    </div>
-
-                                    {answer.question?.question_type === 'mcq' && (
-                                        <div className="text-sm text-muted-foreground">
-                                            <span className="font-semibold">Correct Answer:</span> {answer.question.correct_answer}
-                                        </div>
-                                    )}
-
-                                    {isTeacher ? (
-                                        <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t">
-                                            <div className="space-y-2">
-                                                <Label>Marks Awarded</Label>
-                                                <Input
-                                                    type="number"
-                                                    max={answer.question?.marks}
-                                                    value={answer.marks_awarded || 0}
-                                                    onChange={(e) => handleGradeUpdate(answer.id, { marks_awarded: Number(e.target.value) })}
-                                                />
+                        <CardContent className="space-y-8">
+                            {answers.map((answer, index) => {
+                                const isWrong = answer.is_correct === false;
+                                return (
+                                    <div key={answer.id} className={`p-6 rounded-xl border-2 transition-all ${isWrong ? 'border-destructive/20 bg-destructive/5' : 'bg-muted/30'}`}>
+                                        <div className="flex justify-between items-start gap-4 mb-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm font-bold text-primary">QUESTION {index + 1}</span>
+                                                    {answer.is_correct === true && <CheckCircle2 className="h-4 w-4 text-success" />}
+                                                    {answer.is_correct === false && <XCircle className="h-4 w-4 text-destructive" />}
+                                                </div>
+                                                <p className="font-semibold text-lg leading-snug">{answer.question?.question_text}</p>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Feedback</Label>
-                                                <Textarea
-                                                    placeholder="Add feedback for this answer..."
-                                                    value={answer.feedback || ''}
-                                                    onChange={(e) => handleGradeUpdate(answer.id, { feedback: e.target.value })}
-                                                    className="h-20"
-                                                />
+                                            <div className="shrink-0 text-right">
+                                                <div className="text-sm font-medium bg-background px-3 py-1 rounded-full border shadow-sm">
+                                                    {answer.marks_obtained || 0} / {answer.question?.marks} marks
+                                                </div>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="pt-2 border-t">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                {answer.is_correct ? (
-                                                    <div className="flex items-center gap-1 text-success text-sm font-medium">
-                                                        <CheckCircle2 className="h-4 w-4" /> Correct
-                                                    </div>
-                                                ) : answer.is_correct === false ? (
-                                                    <div className="flex items-center gap-1 text-destructive text-sm font-medium">
-                                                        <XCircle className="h-4 w-4" /> Incorrect
-                                                    </div>
-                                                ) : null}
-                                                <span className="text-sm">Marks: {answer.marks_awarded || 0}/{answer.question?.marks}</span>
+
+                                        <div className="grid gap-4">
+                                            <div className={`p-4 rounded-lg border-l-4 shadow-sm ${isWrong ? 'border-destructive bg-background' : 'border-primary bg-background'}`}>
+                                                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Student's Response:</p>
+                                                <p className="text-foreground leading-relaxed italic">"{answer.answer || '(No answer provided)'}"</p>
                                             </div>
-                                            {answer.feedback && (
-                                                <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 text-sm">
-                                                    <p className="font-semibold text-primary mb-1">Feedback:</p>
-                                                    <p>{answer.feedback}</p>
+
+                                            {(isTeacher || answer.is_correct === false) && answer.question?.question_type === 'mcq' && (
+                                                <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+                                                    <p className="text-xs font-bold uppercase tracking-wider text-success mb-1">Correct Answer:</p>
+                                                    <p className="font-medium">{answer.question.correct_answer}</p>
+                                                </div>
+                                            )}
+
+                                            {answer.question?.explanation && (
+                                                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20">
+                                                    <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">Explanation:</p>
+                                                    <p className="text-sm">{answer.question.explanation}</p>
                                                 </div>
                                             )}
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+
+                                        {isTeacher ? (
+                                            <div className="grid gap-4 sm:grid-cols-2 mt-6 pt-6 border-t">
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-bold uppercase">Update Marks</Label>
+                                                    <Input
+                                                        type="number"
+                                                        max={answer.question?.marks}
+                                                        value={answer.marks_obtained || 0}
+                                                        onChange={(e) => handleGradeUpdate(answer.id, { marks_obtained: Number(e.target.value) })}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-bold uppercase text-primary">Adjust Result</Label>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant={answer.is_correct === true ? 'default' : 'outline'}
+                                                            size="sm"
+                                                            className="flex-1 h-9"
+                                                            onClick={() => handleGradeUpdate(answer.id, { is_correct: true, marks_obtained: answer.question.marks })}
+                                                        >
+                                                            Mark Correct
+                                                        </Button>
+                                                        <Button
+                                                            variant={answer.is_correct === false ? 'destructive' : 'outline'}
+                                                            size="sm"
+                                                            className="flex-1 h-9"
+                                                            onClick={() => handleGradeUpdate(answer.id, { is_correct: false, marks_obtained: 0 })}
+                                                        >
+                                                            Mark Wrong
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <div className="sm:col-span-2 space-y-2">
+                                                    <Label className="text-xs font-bold uppercase">Feedback for Student</Label>
+                                                    <Textarea
+                                                        placeholder="Add professional feedback..."
+                                                        value={answer.feedback || ''}
+                                                        onChange={(e) => handleGradeUpdate(answer.id, { feedback: e.target.value })}
+                                                        className="min-h-[80px] resize-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            answer.feedback && (
+                                                <div className="mt-4 p-4 rounded-lg bg-primary/5 border border-primary/20 shadow-inner">
+                                                    <p className="text-xs font-bold uppercase tracking-wider text-primary mb-2 flex items-center gap-2">
+                                                        Teacher's Feedback
+                                                    </p>
+                                                    <p className="text-sm leading-relaxed text-foreground/90 italic">"{answer.feedback}"</p>
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </CardContent>
                     </Card>
 

@@ -106,45 +106,24 @@ export default function TeacherDashboard() {
     try {
       const now = new Date().toISOString();
 
-      // Fetch exams
-      const { data: exams, error: examsError } = await supabase
-        .from('exams')
-        .select('*')
-        .eq('teacher_id', user!.id)
-        .order('created_at', { ascending: false });
+      // Fetch stats in parallel for better performance
+      const [examsResult, submissionsResult, studentsResult] = await Promise.all([
+        supabase.from('exams').select('id', { count: 'exact' }).eq('teacher_id', user!.id),
+        supabase.from('exam_submissions').select('id', { count: 'exact', head: true }).eq('is_graded', false).not('submitted_at', 'is', null),
+        supabase.from('user_roles').select('id', { count: 'exact' }).eq('role', 'student')
+      ]);
 
-      if (examsError) throw examsError;
+      const exams = (await supabase.from('exams').select('*').eq('teacher_id', user!.id).order('created_at', { ascending: false })).data;
 
-      const activeExams = exams?.filter(
+      const activeCount = exams?.filter(
         (exam) => exam.is_published && new Date(exam.start_time) <= new Date() && new Date(exam.end_time) >= new Date()
       ).length || 0;
 
-      // Fetch pending submissions
-      const { data: submissions, error: submissionsError } = await supabase
-        .from('exam_submissions')
-        .select('*, exams!inner(*)')
-        .eq('exams.teacher_id', user!.id)
-        .eq('is_graded', false)
-        .not('submitted_at', 'is', null);
-
-      if (submissionsError) throw submissionsError;
-
-      // Fetch unique students count
-      const { data: students, error: studentsError } = await supabase
-        .from('profiles')
-        .select('id, user_id')
-        .limit(1000);
-
-      const studentRoles = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'student');
-
       setStats({
-        totalExams: exams?.length || 0,
-        activeExams,
-        totalStudents: studentRoles.data?.length || 0,
-        pendingGrading: submissions?.length || 0,
+        totalExams: examsResult.count || 0,
+        activeExams: activeCount,
+        totalStudents: studentsResult.count || 0,
+        pendingGrading: submissionsResult.count || 0,
       });
 
       setRecentExams(exams?.slice(0, 5) || []);
