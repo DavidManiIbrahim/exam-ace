@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { GraduationCap, BookOpen, Users, Loader2 } from 'lucide-react';
+import { GraduationCap, BookOpen, Users, Loader2, Shield } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -26,23 +26,23 @@ export default function Auth() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
-  const [signupRole, setSignupRole] = useState<'teacher' | 'student'>('student');
+  const [signupRole, setSignupRole] = useState<'teacher' | 'student' | 'admin'>('student');
 
   useEffect(() => {
     if (user && role) {
       if (role === 'admin') {
-        navigate('/admin');
+        navigate('/admin', { replace: true });
       } else if (role === 'teacher') {
-        navigate('/teacher');
+        navigate('/teacher', { replace: true });
       } else {
-        navigate('/student');
+        navigate('/student', { replace: true });
       }
     }
   }, [user, role, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       emailSchema.parse(loginEmail);
       passwordSchema.parse(loginPassword);
@@ -64,8 +64,8 @@ export default function Auth() {
     if (error) {
       toast({
         title: 'Login Failed',
-        description: error.message === 'Invalid login credentials' 
-          ? 'Invalid email or password. Please try again.' 
+        description: error.message === 'Invalid login credentials'
+          ? 'Invalid email or password. Please try again.'
           : error.message,
         variant: 'destructive',
       });
@@ -98,7 +98,7 @@ export default function Auth() {
       const errorMessage = error.message.includes('already registered')
         ? 'This email is already registered. Please sign in instead.'
         : error.message;
-      
+
       toast({
         title: 'Sign Up Failed',
         description: errorMessage,
@@ -130,7 +130,7 @@ export default function Auth() {
             <div className="p-3 bg-primary-foreground/10 rounded-xl backdrop-blur-sm">
               <GraduationCap className="h-10 w-10" />
             </div>
-            <h1 className="text-3xl font-bold">ExamHub</h1>
+            <h1 className="text-3xl font-bold">Exam Ace</h1>
           </div>
           <h2 className="text-4xl font-bold mb-6 leading-tight">
             Modern Exam Management<br />for Modern Education
@@ -138,7 +138,7 @@ export default function Auth() {
           <p className="text-lg text-primary-foreground/80 mb-12 max-w-md">
             Create, manage, and take exams with ease. A complete solution for educators and students.
           </p>
-          
+
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="p-2 bg-primary-foreground/10 rounded-lg backdrop-blur-sm">
@@ -169,7 +169,7 @@ export default function Auth() {
             <div className="p-2 gradient-primary rounded-lg">
               <GraduationCap className="h-6 w-6 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">ExamHub</h1>
+            <h1 className="text-2xl font-bold text-foreground">Exam Ace</h1>
           </div>
 
           <Card className="border-0 shadow-xl">
@@ -254,8 +254,8 @@ export default function Auth() {
                       <Label>I am a</Label>
                       <RadioGroup
                         value={signupRole}
-                        onValueChange={(value) => setSignupRole(value as 'teacher' | 'student')}
-                        className="grid grid-cols-2 gap-4"
+                        onValueChange={(value) => setSignupRole(value as 'teacher' | 'student' | 'admin')}
+                        className="grid grid-cols-3 gap-2"
                       >
                         <div>
                           <RadioGroupItem
@@ -265,10 +265,10 @@ export default function Auth() {
                           />
                           <Label
                             htmlFor="student"
-                            className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                            className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all h-full"
                           >
-                            <BookOpen className="mb-2 h-5 w-5" />
-                            <span className="text-sm font-medium">Student</span>
+                            <BookOpen className="mb-1 h-4 w-4" />
+                            <span className="text-xs font-medium">Student</span>
                           </Label>
                         </div>
                         <div>
@@ -279,10 +279,24 @@ export default function Auth() {
                           />
                           <Label
                             htmlFor="teacher"
-                            className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all"
+                            className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all h-full"
                           >
-                            <GraduationCap className="mb-2 h-5 w-5" />
-                            <span className="text-sm font-medium">Teacher</span>
+                            <GraduationCap className="mb-1 h-4 w-4" />
+                            <span className="text-xs font-medium">Teacher</span>
+                          </Label>
+                        </div>
+                        <div>
+                          <RadioGroupItem
+                            value="admin"
+                            id="admin"
+                            className="peer sr-only"
+                          />
+                          <Label
+                            htmlFor="admin"
+                            className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer transition-all h-full"
+                          >
+                            <Shield className="mb-1 h-4 w-4" />
+                            <span className="text-xs font-medium">Admin</span>
                           </Label>
                         </div>
                       </RadioGroup>

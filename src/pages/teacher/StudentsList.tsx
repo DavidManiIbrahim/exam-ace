@@ -24,6 +24,42 @@ export default function StudentsList() {
 
   useEffect(() => {
     fetchStudents();
+
+    const rolesChannel = supabase
+      .channel('students-list-roles')
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_roles',
+          filter: 'role=eq.student',
+        },
+        () => {
+          fetchStudents();
+        }
+      )
+      .subscribe();
+
+    const profilesChannel = supabase
+      .channel('students-list-profiles')
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          fetchStudents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(rolesChannel);
+      supabase.removeChannel(profilesChannel);
+    };
   }, []);
 
   const fetchStudents = async () => {

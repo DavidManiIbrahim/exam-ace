@@ -24,7 +24,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Search, Users, Trash2, ClipboardList } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
+import { Search, Users, Trash2, ClipboardList, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -43,11 +52,18 @@ export default function AdminStudents() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { toast } = useToast();
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [availableClasses, setAvailableClasses] = useState<{ id: string, name: string }[]>([]);
 
   useEffect(() => {
     fetchStudents();
+    fetchClasses();
   }, []);
+
+  async function fetchClasses() {
+    const { data } = await (supabase.from('classes') as any).select('*').order('name');
+    if (data) setAvailableClasses(data);
+  }
 
   async function fetchStudents() {
     const { data: roles, error: rolesError } = await supabase
@@ -98,6 +114,27 @@ export default function AdminStudents() {
     setStudents(studentsWithCounts);
     setLoading(false);
   }
+
+  const handleUpdateStudent = async () => {
+    if (!editingStudent) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: editingStudent.full_name,
+        student_id: editingStudent.student_id,
+        class: editingStudent.class,
+      })
+      .eq('user_id', editingStudent.user_id);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Success', description: 'Student updated successfully' });
+      setEditingStudent(null);
+      fetchStudents();
+    }
+  };
 
   const filteredStudents = students.filter(
     (student) =>
@@ -192,6 +229,15 @@ export default function AdminStudents() {
                         </TableCell>
                         <TableCell>{format(new Date(student.created_at), 'MMM d, yyyy')}</TableCell>
                         <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mr-2"
+                            onClick={() => setEditingStudent(student)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
@@ -226,6 +272,57 @@ export default function AdminStudents() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!editingStudent} onOpenChange={(open) => !open && setEditingStudent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Student</DialogTitle>
+            <DialogDescription>Update student details and assign a class.</DialogDescription>
+          </DialogHeader>
+          {editingStudent && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Full Name</Label>
+                <Input
+                  id="full_name"
+                  value={editingStudent.full_name}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, full_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="student_id">Student ID</Label>
+                <Input
+                  id="student_id"
+                  value={editingStudent.student_id || ''}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, student_id: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="class">Assign Class</Label>
+                <select
+                  id="class"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={editingStudent.class || ''}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, class: e.target.value })}
+                >
+                  <option value="">No Class</option>
+                  {availableClasses.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingStudent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateStudent}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

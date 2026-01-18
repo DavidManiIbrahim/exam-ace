@@ -16,8 +16,10 @@ import {
   Clock,
   Eye,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { exportResultsToPDF } from '@/lib/pdf';
 
 interface Submission {
   id: string;
@@ -31,6 +33,7 @@ interface Submission {
   exam: {
     title: string;
     subject: string;
+    results_published: boolean;
   };
   student_profile: {
     full_name: string;
@@ -49,6 +52,42 @@ export default function TeacherResults() {
   useEffect(() => {
     if (user) {
       fetchSubmissions();
+
+      const examsChannel = supabase
+        .channel('teacher-results-exams')
+        .on(
+          'postgres_changes' as any,
+          {
+            event: '*',
+            schema: 'public',
+            table: 'exams',
+            filter: `teacher_id=eq.${user.id}`,
+          },
+          () => {
+            fetchSubmissions();
+          }
+        )
+        .subscribe();
+
+      const submissionsChannel = supabase
+        .channel('teacher-results-submissions')
+        .on(
+          'postgres_changes' as any,
+          {
+            event: '*',
+            schema: 'public',
+            table: 'exam_submissions'
+          },
+          () => {
+            fetchSubmissions();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(examsChannel);
+        supabase.removeChannel(submissionsChannel);
+      };
     }
   }, [user]);
 
@@ -74,7 +113,7 @@ export default function TeacherResults() {
         .from('exam_submissions')
         .select(`
           *,
-          exam:exams(title, subject)
+          exam:exams(title, subject, results_published)
         `)
         .in('exam_id', examIds)
         .not('submitted_at', 'is', null)
@@ -152,9 +191,20 @@ export default function TeacherResults() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Results</h1>
-          <p className="text-muted-foreground">View and manage exam submissions</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Results</h1>
+            <p className="text-muted-foreground">View and manage exam submissions</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => exportResultsToPDF(filteredSubmissions, 'Overall')}
+            className="flex items-center gap-2"
+            disabled={filteredSubmissions.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            Download Results PDF
+          </Button>
         </div>
 
         {/* Stats */}
@@ -253,9 +303,9 @@ export default function TeacherResults() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
                       {submission.is_graded ? (
-                        <div className="text-right">
+                        <div className="text-right mr-4">
                           <p className="font-bold text-foreground">
                             {submission.total_score}/{submission.max_score}
                           </p>
@@ -264,8 +314,24 @@ export default function TeacherResults() {
                           </p>
                         </div>
                       ) : (
-                        <span className="status-badge status-upcoming">Pending</span>
+                        <span className="status-badge status-upcoming mr-4">Pending</span>
                       )}
+
+                      {!submission.exam?.results_published && submission.is_graded && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handlePublishResults(submission.exam_id)}
+                          disabled={publishingResults === submission.exam_id}
+                        >
+                          {publishingResults === submission.exam_id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Publish Results'
+                          )}
+                        </Button>
+                      )}
+
                       <Button variant="outline" size="sm" asChild>
                         <Link to={`/teacher/results/${submission.id}`}>
                           <Eye className="h-4 w-4 mr-1" />

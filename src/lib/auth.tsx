@@ -9,7 +9,7 @@ interface AuthContextType {
   session: Session | null;
   role: UserRole;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role: 'teacher' | 'student') => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, role: 'teacher' | 'student' | 'admin') => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -42,39 +42,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          const userRole = await fetchUserRole(session.user.id);
-          setRole(userRole);
-        } else {
-          setRole(null);
+    let mounted = true;
+
+    const initializeAuth = async (currSession: Session | null) => {
+      if (!mounted) return;
+
+      setSession(currSession);
+      const currUser = currSession?.user ?? null;
+      setUser(currUser);
+
+      if (currUser) {
+        // 1. Try metadata (fastest)
+        const metadataRole = currUser.app_metadata?.role as UserRole;
+        if (metadataRole) {
+          setRole(metadataRole);
+          setLoading(false);
+          return;
         }
+
+        // 2. Try table fetch
+        let resolvedRole = await fetchUserRole(currUser.id);
+
+        // 3. Last ditch: if no role found but logged in, maybe it's still propagating
+        if (!resolvedRole && mounted) {
+          // Wait longer and try one last time
+          await new Promise(r => setTimeout(r, 2000));
+          resolvedRole = await fetchUserRole(currUser.id);
+        }
+
+        if (mounted) {
+          if (resolvedRole) {
+            setRole(resolvedRole);
+          } else if (!role) {
+            // Only default to student if we have absolutely NO role yet
+            setRole('student');
+          }
+          setLoading(false);
+        }
+      } else {
+        setRole(null);
         setLoading(false);
+      }
+    };
+
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        initializeAuth(session);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const userRole = await fetchUserRole(session.user.id);
-        setRole(userRole);
-      }
-      setLoading(false);
+    // Initial check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      initializeAuth(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, userRole: 'teacher' | 'student') => {
+  const signUp = async (email: string, password: string, fullName: string, userRole: 'teacher' | 'student' | 'admin') => {
     try {
       const redirectUrl = `${window.location.origin}/`;
-      
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -82,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName,
+            role: userRole,
           },
         },
       });
@@ -91,14 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({ user_id: data.user.id, role: userRole });
-
-        if (roleError) {
-          console.error('Error setting role:', roleError);
-          return { error: roleError };
-        }
         setRole(userRole);
       }
 

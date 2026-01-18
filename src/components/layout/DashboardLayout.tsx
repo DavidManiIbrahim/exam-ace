@@ -61,6 +61,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/student', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/student/exams', label: 'My Exams', icon: ClipboardList },
     { href: '/student/results', label: 'My Results', icon: Trophy },
+    { href: '/student/report-card', label: 'Report Card', icon: GraduationCap },
   ];
 
   const navItems = role === 'admin' ? adminNavItems : role === 'teacher' ? teacherNavItems : studentNavItems;
@@ -114,7 +115,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="p-2 gradient-primary rounded-lg">
               <GraduationCap className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold text-foreground">ExamHub</span>
+            <span className="text-lg font-bold text-foreground">Exam Ace</span>
             <Button
               variant="ghost"
               size="icon"
@@ -129,8 +130,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <div className="px-6 py-4">
             <div className={cn(
               "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium",
-              role === 'admin' 
-                ? "bg-destructive/10 text-destructive" 
+              role === 'admin'
+                ? "bg-destructive/10 text-destructive"
                 : "bg-primary/10 text-primary"
             )}>
               {getRoleBadge()}

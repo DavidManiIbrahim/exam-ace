@@ -33,6 +33,9 @@ interface Exam {
   id: string;
   title: string;
   subject: string;
+  exam_type: string;
+  class_id?: string;
+  class_name?: string;
   duration_minutes: number;
   start_time: string;
   end_time: string;
@@ -53,8 +56,8 @@ export default function AdminExams() {
   }, []);
 
   async function fetchExams() {
-    const { data: examsData, error: examsError } = await supabase
-      .from('exams')
+    const { data: examsData, error: examsError } = await (supabase
+      .from('exams') as any)
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -65,7 +68,7 @@ export default function AdminExams() {
     }
 
     // Get teacher names
-    const teacherIds = [...new Set(examsData?.map((e) => e.teacher_id) || [])];
+    const teacherIds = [...new Set(examsData?.map((e: any) => e.teacher_id) || [])];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, full_name')
@@ -73,12 +76,22 @@ export default function AdminExams() {
 
     const profileMap = new Map(profiles?.map((p) => [p.user_id, p.full_name]) || []);
 
-    const examsWithTeachers = (examsData || []).map((exam) => ({
+    // Get class names
+    const classIds = [...new Set(examsData?.map((e: any) => e.class_id).filter(Boolean) || [])];
+    const { data: classes } = await (supabase
+      .from('classes') as any)
+      .select('id, name')
+      .in('id', classIds);
+
+    const classMap = new Map((classes as any)?.map((c: any) => [c.id, c.name]) || []);
+
+    const enrichedExams = (examsData || []).map((exam: any) => ({
       ...exam,
       teacher_name: profileMap.get(exam.teacher_id) || 'Unknown',
+      class_name: exam.class_id ? classMap.get(exam.class_id) : 'All Classes',
     }));
 
-    setExams(examsWithTeachers);
+    setExams(enrichedExams as any);
     setLoading(false);
   }
 
@@ -168,11 +181,11 @@ export default function AdminExams() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Subject</TableHead>
+                      <TableHead>Target Class</TableHead>
                       <TableHead>Teacher</TableHead>
-                      <TableHead>Duration</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Start Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -182,13 +195,15 @@ export default function AdminExams() {
                       return (
                         <TableRow key={exam.id}>
                           <TableCell className="font-medium">{exam.title}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{exam.exam_type}</Badge>
+                          </TableCell>
                           <TableCell>{exam.subject}</TableCell>
+                          <TableCell>{exam.class_name}</TableCell>
                           <TableCell>{exam.teacher_name}</TableCell>
-                          <TableCell>{exam.duration_minutes} min</TableCell>
                           <TableCell>
                             <Badge variant={status.variant}>{status.label}</Badge>
                           </TableCell>
-                          <TableCell>{format(new Date(exam.start_time), 'MMM d, yyyy')}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button variant="ghost" size="sm" asChild>
