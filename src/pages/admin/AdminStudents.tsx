@@ -36,6 +36,7 @@ import { Label } from '@/components/ui/label';
 import { Search, Users, Trash2, ClipboardList, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 interface Student {
   id: string;
@@ -61,8 +62,8 @@ export default function AdminStudents() {
   }, []);
 
   async function fetchClasses() {
-    const { data } = await (supabase.from('classes') as any).select('*').order('name');
-    if (data) setAvailableClasses(data);
+    const { data } = await (supabase as any).from('classes').select('*').order('name');
+    if (data) setAvailableClasses(data as { id: string; name: string }[]);
   }
 
   async function fetchStudents() {
@@ -128,9 +129,9 @@ export default function AdminStudents() {
       .eq('user_id', editingStudent.user_id);
 
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
     } else {
-      toast({ title: 'Success', description: 'Student updated successfully' });
+      toast.success('Student updated successfully');
       setEditingStudent(null);
       fetchStudents();
     }
@@ -150,18 +151,11 @@ export default function AdminStudents() {
       .eq('user_id', userId);
 
     if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to remove student. ' + error.message,
-        variant: 'destructive',
-      });
+      toast.error('Failed to remove student. ' + error.message);
       return;
     }
 
-    toast({
-      title: 'Student Removed',
-      description: 'The student has been removed from the system.',
-    });
+    toast.success('The student has been removed from the system.');
     fetchStudents();
   };
 

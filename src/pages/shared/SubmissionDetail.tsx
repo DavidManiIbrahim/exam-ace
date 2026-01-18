@@ -78,7 +78,7 @@ export default function SubmissionDetail() {
 
             // Simple security check for students
             if (role === 'student' && !subData.exam.results_published && !subData.is_graded) {
-                toast({ title: 'Access Denied', description: 'Results are not yet published for this exam.', variant: 'warning' });
+                toast({ title: 'Access Denied', description: 'Results are not yet published for this exam.', variant: 'destructive' });
                 navigate('/student/results');
                 return;
             }

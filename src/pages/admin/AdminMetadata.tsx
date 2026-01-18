@@ -22,16 +22,16 @@ export default function AdminMetadata() {
     }, []);
 
     const fetchData = async () => {
-        const { data: classesData } = await supabase.from('classes').select('*').order('name');
-        const { data: subjectsData } = await supabase.from('subjects').select('*').order('name');
-        if (classesData) setClasses(classesData);
-        if (subjectsData) setSubjects(subjectsData);
+        const { data: classesData } = await (supabase as any).from('classes').select('*').order('name');
+        const { data: subjectsData } = await (supabase as any).from('subjects').select('*').order('name');
+        if (classesData) setClasses(classesData as { id: string; name: string }[]);
+        if (subjectsData) setSubjects(subjectsData as { id: string; name: string }[]);
     };
 
     const handleAddClass = async () => {
         if (!newClassName.trim()) return;
         setIsLoading(true);
-        const { error } = await supabase.from('classes').insert({ name: newClassName.trim() });
+        const { error } = await (supabase as any).from('classes').insert({ name: newClassName.trim() });
         if (error) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } else {
@@ -45,7 +45,7 @@ export default function AdminMetadata() {
     const handleAddSubject = async () => {
         if (!newSubjectName.trim()) return;
         setIsLoading(true);
-        const { error } = await supabase.from('subjects').insert({ name: newSubjectName.trim() });
+        const { error } = await (supabase as any).from('subjects').insert({ name: newSubjectName.trim() });
         if (error) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } else {
@@ -57,7 +57,7 @@ export default function AdminMetadata() {
     };
 
     const handleDelete = async (table: 'classes' | 'subjects', id: string) => {
-        const { error } = await supabase.from(table).delete().eq('id', id);
+        const { error } = await (supabase as any).from(table).delete().eq('id', id);
         if (error) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } else {
