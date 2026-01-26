@@ -124,7 +124,7 @@ export default function Auth() {
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-hero relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptNiA2aDZ2Nmg2di02aC02em0tNiA2djZoNnYtNmgtNnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50" />
+        <div className="absolute inset-0 bg-[url('/museums-victoria-n1LIveUPls4-unsplash.jpg')] bg-cover bg-center opacity-50" />
         <div className="relative z-10 flex flex-col justify-center px-12 text-primary-foreground">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-3 bg-primary-foreground/10 rounded-xl backdrop-blur-sm">
