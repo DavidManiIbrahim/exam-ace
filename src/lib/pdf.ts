@@ -34,7 +34,7 @@ export const exportResultsToPDF = (results: any[], examTitle: string) => {
         head: [tableColumn],
         body: tableRows,
         theme: 'striped',
-        headStyles: { fillStyle: '#4f46e5' }, // indigo-600 color
+        headStyles: { fillColor: [79, 70, 229] }, // indigo-600 color
         styles: { fontSize: 10, cellPadding: 3 },
     });
 
