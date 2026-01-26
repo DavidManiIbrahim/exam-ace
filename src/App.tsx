@@ -28,6 +28,7 @@ const TakeExam = lazy(() => import("./pages/student/TakeExam"));
 const StudentResults = lazy(() => import("./pages/student/StudentResults"));
 const ReportCard = lazy(() => import("./pages/student/ReportCard"));
 const TeacherReportCards = lazy(() => import("./pages/teacher/ReportCards"));
+const Profile = lazy(() => import("./pages/shared/Profile"));
 const SubmissionDetail = lazy(() => import("./pages/shared/SubmissionDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -109,6 +110,9 @@ function AppRoutes() {
       <Route path="/student/results" element={<ProtectedRoute allowedRoles={['student']}><StudentResults /></ProtectedRoute>} />
       <Route path="/student/results/:id" element={<ProtectedRoute allowedRoles={['student']}><SubmissionDetail /></ProtectedRoute>} />
       <Route path="/student/report-card" element={<ProtectedRoute allowedRoles={['student']}><ReportCard /></ProtectedRoute>} />
+
+      {/* Shared routes */}
+      <Route path="/profile" element={<ProtectedRoute allowedRoles={['admin', 'teacher', 'student']}><Profile /></ProtectedRoute>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
