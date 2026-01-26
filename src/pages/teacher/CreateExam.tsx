@@ -56,10 +56,10 @@ export default function CreateExam() {
   }, []);
 
   const fetchMetadata = async () => {
-    const { data: classesData } = await supabase.from('classes').select('*').order('name');
-    const { data: subjectsData } = await supabase.from('subjects').select('*').order('name');
-    if (classesData) setClasses(classesData);
-    if (subjectsData) setSubjects(subjectsData);
+    const { data: classesData } = await (supabase as any).from('classes').select('*').order('name');
+    const { data: subjectsData } = await (supabase as any).from('subjects').select('*').order('name');
+    if (classesData) setClasses(classesData as { id: string; name: string }[]);
+    if (subjectsData) setSubjects(subjectsData as { id: string; name: string }[]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

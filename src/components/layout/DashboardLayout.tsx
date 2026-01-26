@@ -44,10 +44,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const adminNavItems = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/users', label: 'User Management', icon: Shield },
     { href: '/admin/teachers', label: 'Teachers', icon: GraduationCap },
     { href: '/admin/students', label: 'Students', icon: Users },
     { href: '/admin/exams', label: 'All Exams', icon: FileText },
     { href: '/admin/results', label: 'All Results', icon: Trophy },
+    { href: '/admin/metadata', label: 'Classes & Subjects', icon: Settings },
   ];
 
   const teacherNavItems = [

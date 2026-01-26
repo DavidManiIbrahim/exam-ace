@@ -68,7 +68,7 @@ export default function AdminExams() {
     }
 
     // Get teacher names
-    const teacherIds = [...new Set(examsData?.map((e: any) => e.teacher_id) || [])];
+    const teacherIds = [...new Set(examsData?.map((e: any) => e.teacher_id) || [])] as string[];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, full_name')
@@ -76,10 +76,10 @@ export default function AdminExams() {
 
     const profileMap = new Map(profiles?.map((p) => [p.user_id, p.full_name]) || []);
 
-    // Get class names
-    const classIds = [...new Set(examsData?.map((e: any) => e.class_id).filter(Boolean) || [])];
-    const { data: classes } = await (supabase
-      .from('classes') as any)
+    // Get class names - classes table may not be in types yet
+    const classIds = [...new Set(examsData?.map((e: any) => e.class_id).filter(Boolean) || [])] as string[];
+    const { data: classes } = await (supabase as any)
+      .from('classes')
       .select('id, name')
       .in('id', classIds);
 

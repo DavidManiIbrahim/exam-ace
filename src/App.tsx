@@ -14,6 +14,8 @@ const AdminTeachers = lazy(() => import("./pages/admin/AdminTeachers"));
 const AdminStudents = lazy(() => import("./pages/admin/AdminStudents"));
 const AdminExams = lazy(() => import("./pages/admin/AdminExams"));
 const AdminResults = lazy(() => import("./pages/admin/AdminResults"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminMetadata = lazy(() => import("./pages/admin/AdminMetadata"));
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
 const ExamsList = lazy(() => import("./pages/teacher/ExamsList"));
 const CreateExam = lazy(() => import("./pages/teacher/CreateExam"));
@@ -86,6 +88,8 @@ function AppRoutes() {
       <Route path="/admin/exams/:id" element={<ProtectedRoute allowedRoles={['admin']}><ExamDetails /></ProtectedRoute>} />
       <Route path="/admin/results" element={<ProtectedRoute allowedRoles={['admin']}><AdminResults /></ProtectedRoute>} />
       <Route path="/admin/results/:id" element={<ProtectedRoute allowedRoles={['admin']}><SubmissionDetail /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} />
+      <Route path="/admin/metadata" element={<ProtectedRoute allowedRoles={['admin']}><AdminMetadata /></ProtectedRoute>} />
 
       {/* Teacher routes */}
       <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
