@@ -44,7 +44,6 @@ interface ReportData {
         exam: {
             title: string;
             subject: string;
-            exam_type: string;
             results_published: boolean;
         };
     }[];
@@ -202,7 +201,7 @@ function ReportCardView({ student, onBack }: { student: Student; onBack: () => v
           total_score,
           max_score,
           submitted_at,
-          exam:exams(title, subject, exam_type, results_published)
+          exam:exams(title, subject, results_published)
         `)
                 .eq('student_id', student.user_id)
                 .eq('is_graded', true)
@@ -264,13 +263,12 @@ function ReportCardView({ student, onBack }: { student: Student; onBack: () => v
         doc.text(`Grade: ${stats.grade}`, 140, 36);
 
         // Table
-        const tableColumn = ["Subject", "Exam", "Type", "Score", "Percentage", "Grade"];
+        const tableColumn = ["Subject", "Exam", "Score", "Percentage", "Grade"];
         const tableRows = results.map(result => {
             const pct = Math.round((result.total_score / result.max_score) * 100);
             return [
                 result.exam.subject,
                 result.exam.title,
-                result.exam.exam_type,
                 `${result.total_score}/${result.max_score}`,
                 `${pct}%`,
                 getResultGrade(result.total_score, result.max_score)
@@ -282,7 +280,7 @@ function ReportCardView({ student, onBack }: { student: Student; onBack: () => v
             head: [tableColumn],
             body: tableRows,
             theme: 'striped',
-            headStyles: { fillStyle: '#4f46e5' },
+            headStyles: { fillColor: [79, 70, 229] },
         });
 
         doc.save(`${student.full_name.replace(/\s+/g, '_')}_Report_Card.pdf`);
@@ -372,7 +370,6 @@ function ReportCardView({ student, onBack }: { student: Student; onBack: () => v
                                 <TableRow>
                                     <TableHead className="font-bold">Subject</TableHead>
                                     <TableHead className="font-bold">Exam</TableHead>
-                                    <TableHead className="font-bold">Type</TableHead>
                                     <TableHead className="font-bold">Score</TableHead>
                                     <TableHead className="font-bold">Percentage</TableHead>
                                     <TableHead className="font-bold">Grade</TableHead>
@@ -382,7 +379,7 @@ function ReportCardView({ student, onBack }: { student: Student; onBack: () => v
                             <TableBody>
                                 {results.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                             No results found for this student.
                                         </TableCell>
                                     </TableRow>
@@ -390,11 +387,6 @@ function ReportCardView({ student, onBack }: { student: Student; onBack: () => v
                                     <TableRow key={result.id} className="hover:bg-muted/30">
                                         <TableCell className="font-bold text-primary">{result.exam.subject}</TableCell>
                                         <TableCell className="font-medium">{result.exam.title}</TableCell>
-                                        <TableCell>
-                                            <span className="capitalize px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted border">
-                                                {result.exam.exam_type}
-                                            </span>
-                                        </TableCell>
                                         <TableCell className="font-bold">
                                             {result.total_score} / {result.max_score}
                                         </TableCell>
